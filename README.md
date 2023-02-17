@@ -1,2 +1,1 @@
-# medium01
-.NET 7 ProblemDetails customization
+# Error Handling in ASP.NET Core Web API with problem details service
