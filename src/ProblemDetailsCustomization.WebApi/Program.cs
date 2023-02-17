@@ -52,6 +52,19 @@ var exceptionHandlerOptions = new ExceptionHandlerOptions
                 Status = statusCode
             };
 
+            if (app.Environment.IsDevelopment())
+            {
+                problemDetails.Title = exceptionHandlerFeature.Error.GetType().ToString();
+                problemDetails.Extensions["exception"] = new
+                {
+                    Details = exceptionHandlerFeature.Error.ToString(),
+                    context.Request.Headers,
+                    Path = context.Request.Path.ToString(),
+                    Endpoint = exceptionHandlerFeature.Endpoint?.ToString(),
+                    exceptionHandlerFeature.RouteValues,
+                };
+            }
+
             await problemDetailsService.WriteAsync(new ProblemDetailsContext
             {
                 HttpContext = context,
