@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using ProblemDetailsCustomization.WebApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +24,44 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseExceptionHandler();
+var exceptionHandlerOptions = new ExceptionHandlerOptions
+{
+    ExceptionHandler = async (context) =>
+    {
+        if (context.RequestServices.GetService<IProblemDetailsService>() is { } problemDetailsService)
+        {
+            await ExceptionHandler();
+        }
+
+        async Task ExceptionHandler()
+        {
+            var exceptionHandlerFeature = context.Features.Get<IExceptionHandlerFeature>();
+
+            var statusCode = exceptionHandlerFeature!.Error switch
+            {
+                ApplicationSpecificException => StatusCodes.Status418ImATeapot,
+                _ => StatusCodes.Status500InternalServerError
+            };
+
+            context.Response.StatusCode = statusCode;
+
+            var problemDetails = new ProblemDetails
+            {
+                Title = "I'm a teapot",
+                Detail = exceptionHandlerFeature.Error.Message,
+                Status = statusCode
+            };
+
+            await problemDetailsService.WriteAsync(new ProblemDetailsContext
+            {
+                HttpContext = context,
+                AdditionalMetadata = exceptionHandlerFeature.Endpoint?.Metadata,
+                ProblemDetails = problemDetails
+            });
+        }
+    }
+};
+app.UseExceptionHandler(exceptionHandlerOptions);
 app.UseStatusCodePages();
 
 app.MapGet("coffee", () =>
